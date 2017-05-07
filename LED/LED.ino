@@ -76,6 +76,7 @@ void setup() {
 
 
 void loop() {
+  int ms= millis();
   // put your main code here, to run repeatedly:
 
   if (digitalRead(BUTTON_PIN_P1) == HIGH) {
@@ -117,5 +118,8 @@ void loop() {
     }
   }
   strip.show();
+  ms=millis()-ms;
+  Serial.println(ms);
   delay(30);
+  
 }
