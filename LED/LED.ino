@@ -119,7 +119,7 @@ void loop() {
   }
   strip.show();
   ms=millis()-ms;
-  Serial.println(ms);
-  delay(30);
+
+  delay(33-ms);
   
 }
