@@ -22,7 +22,11 @@ MUSIC = {
 SOUNDS = {
     '$S0': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/doublekill.wav'),
     '$S1': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster-new.wav'),
-    '$S2': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/hitmarker.wav')
+    '$S2': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/hitmarker.wav'),
+    '$S3': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/PlayerOneWins.wav'),
+    '$S4': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/PlayerTwoWins.wav'),
+    '$S5': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Round1.wav'),
+    '$S6': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Round2.wav'),
 }
 
 def play_music(serial_input):

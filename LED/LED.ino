@@ -51,6 +51,7 @@ int Lifes = MAX_LIFES;
 const int DEFEND_BUFFER_SIZE = 15;
 
 unsigned long lastRunTime = 0;
+unsigned long startTime = 0;
 
 int lastActions[10];
 int currentAction = 0;
@@ -75,6 +76,10 @@ int currentMusicTrack = 0;
 const char PLAYER_SUPERSHOT_SOUND[] = "$S0";
 const char PLAYER_SHOOT_SOUND[] = "$S1";
 const char PLAYER_HIT_SOUND[] = "$S2";
+const char PLAYER_ONE_WIN_SOUND[] = "$S3";
+const char PLAYER_TWO_WIN_SOUND[] = "$S4";
+const char ROUND_ONE_SOUND[] = "$S5";
+const char ROUND_TWO_SOUND[] = "$S6";
 
 // Colors structs
 RGB red;
@@ -407,7 +412,11 @@ void setupNewGame() {
 
   if (!swapped) {
     idle = true;
+  } else {
+    Serial.println(ROUND_TWO_SOUND);
   }
+
+  startTime = millis();
 }
 
 void blinkAllLanes(int r, int g, int b, int ms) {
@@ -432,7 +441,7 @@ void blinkWinner(bool playerTwo, int ms) {
   secondColor.g = playerTwo ? 255 : 0;
   secondColor.b = 0;
 
-  for (int i=0; i<NUM_LANES / 2; i++) {
+  for (int i=0; i<NUM_LANES; i++) {
     int stripPixels = Lanes_Array[i]->strip->numPixels();
     for (int j = 0; j < stripPixels / 2; j++) {
       Lanes_Array[i]->strip->setPixelColor(j, firstColor.r, firstColor.g, firstColor.b);
@@ -440,6 +449,7 @@ void blinkWinner(bool playerTwo, int ms) {
     for (int j = stripPixels / 2; j < stripPixels; j++) {
       Lanes_Array[i]->strip->setPixelColor(j, secondColor.r, secondColor.g, secondColor.b);
     }
+    Lanes_Array[i]->strip->show();
   }
   delay(ms / 2);
   for (int i=0; i<NUM_LANES; i++) {
@@ -449,19 +459,21 @@ void blinkWinner(bool playerTwo, int ms) {
 }
 
 void endGame() {
-  unsigned long runTime = millis();
+  unsigned long runTime = millis() - startTime;
   Serial.println(GAME_OVER_MUSIC);
 
   if (swapped) {
     // Game has ended, check which player has won
     if (runTime < lastRunTime) {
       // Player 2 has won
+      Serial.println(PLAYER_TWO_WIN_SOUND);
       blinkWinner(true, 1000);
       blinkWinner(true, 1000);
       blinkWinner(true, 1000);
       blinkWinner(true, 1000);
     } else {
       // Player 1 has won
+      Serial.println(PLAYER_ONE_WIN_SOUND);
       blinkWinner(false, 1000);
       blinkWinner(false, 1000);
       blinkWinner(false, 1000);
@@ -531,6 +543,8 @@ void theaterChaseRainbow(uint8_t wait) {
     
       if (interrupted()) {
         idle = false;
+        startTime = millis();
+        Serial.println(ROUND_ONE_SOUND);
         return;
       }
 
