@@ -391,8 +391,10 @@ void updateLifeDisplay() {
 
 void setupNewGame() {
   // Start music
-  Serial.println(BACKGROUND_MUSIC + currentMusicTrack);
+  String musicTrack = BACKGROUND_MUSIC;
+  Serial.println(musicTrack + currentMusicTrack);
   currentMusicTrack = (currentMusicTrack + 1) % NUMBER_OF_MUSIC_TRACKS;
+  Serial.println(currentMusicTrack);
   
   Lifes = MAX_LIFES;
 

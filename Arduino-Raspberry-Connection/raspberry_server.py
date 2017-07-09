@@ -11,8 +11,8 @@ pygame.mixer.set_num_channels(NUM_CHANNELS)
 print pygame.mixer.get_num_channels()
 
 MUSIC = {
-    '$M0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Stayin-Alive.mp3',
-    '$M1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Mario-Gameover.mp3'
+    '$M-1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Mario-Gameover.mp3',
+    '$M0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Stayin-Alive.mp3'
 }
 
 SOUNDS = {
