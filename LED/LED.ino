@@ -2,38 +2,37 @@
 #include "Arduino.h"
 
 // Lane 1
-const int LED_STRIP_PIN_LANE_1 = 2;
-const int BUTTON_PIN_SHOOT_LANE_1 = 8;
-const int BUTTON_PIN_DEFEND_LANE_1 = 11;
+const int LED_STRIP_PIN_LANE_1 = 22;
+const int BUTTON_PIN_SHOOT_LANE_1 = 6;
+const int BUTTON_PIN_DEFEND_LANE_1 = 40;
 const int STRIP_START_LANE_1 = 25;
 const int STRIP_END_LANE_1 = 125;
 // Lane 2
-const int LED_STRIP_PIN_LANE_2 = 3;
-const int BUTTON_PIN_SHOOT_LANE_2 = 9;
-const int BUTTON_PIN_DEFEND_LANE_2 = 10;
+const int LED_STRIP_PIN_LANE_2 = 23;
+const int BUTTON_PIN_SHOOT_LANE_2 = 2;
+const int BUTTON_PIN_DEFEND_LANE_2 = 41;
 const int STRIP_START_LANE_2 = 25;
 const int STRIP_END_LANE_2 = 125;
 // Lane 3
-const int LED_STRIP_PIN_LANE_3 = 4;
-const int BUTTON_PIN_SHOOT_LANE_3 = 10;
-const int BUTTON_PIN_DEFEND_LANE_3 = 10;
+const int LED_STRIP_PIN_LANE_3 = 26;
+const int BUTTON_PIN_SHOOT_LANE_3 = 3;
+const int BUTTON_PIN_DEFEND_LANE_3 = 45;
 const int STRIP_START_LANE_3 = 25;
 const int STRIP_END_LANE_3 = 125;
 // Lane 4
-const int LED_STRIP_PIN_LANE_4 = 5;
-const int BUTTON_PIN_SHOOT_LANE_4 = 11;
-const int BUTTON_PIN_DEFEND_LANE_4 = 10;
+const int LED_STRIP_PIN_LANE_4 = 27;
+const int BUTTON_PIN_SHOOT_LANE_4 = 4;
+const int BUTTON_PIN_DEFEND_LANE_4 = 44;
 const int STRIP_START_LANE_4 = 25;
 const int STRIP_END_LANE_4 = 125;
 // Lane 5
-const int LED_STRIP_PIN_LANE_5 = 6;
-const int BUTTON_PIN_SHOOT_LANE_5 = 12;
-const int BUTTON_PIN_DEFEND_LANE_5 = 10;
+const int LED_STRIP_PIN_LANE_5 = 30;
+const int BUTTON_PIN_SHOOT_LANE_5 = 5;
+const int BUTTON_PIN_DEFEND_LANE_5 = 49;
 const int STRIP_START_LANE_5 = 25;
 const int STRIP_END_LANE_5 = 125;
 
 // Life Lane
-const int PIXELS_LANE_LIFE = 150;
 const int LED_STRIP_PIN_LIFE = 1;
 
 // Number of LEDs of a single strip
@@ -42,6 +41,7 @@ const int PIXELS_LANE_2 = 150;
 const int PIXELS_LANE_3 = 150;
 const int PIXELS_LANE_4 = 150;
 const int PIXELS_LANE_5 = 150;
+const int PIXELS_LANE_LIFE = 150;
 
 const byte IMPULS_MIN_SIZE = 4; // Minimum length of an impulse
 const int MAX_LIFES = 100;
@@ -55,7 +55,8 @@ struct RGB {
 
 // Music and Sounds
 
-char BACKGROUND_MUSIC[] = "$M0";
+const char BACKGROUND_MUSIC[] = "$M0";
+const char PLAYER_HIT_SOUND[] = "$S0";
 
 // Colors structs
 RGB red;
@@ -80,7 +81,6 @@ class Lane {
     //dynamically allocated array of *Impuls
     int stripStart;
     int stripEnd;
-    bool hitSoundArmed;
     Impuls** impulses;
     int current_index;
     Lane(int num_pixels, int led_pin, int button1, int button2, int stripStart, int stripEnd);
@@ -115,7 +115,6 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
   button2=but2;
   stripStart = sStart;
   stripEnd = sEnd;
-  hitSoundArmed = true;
 };
 
 //New Impuls Function declaration
@@ -130,14 +129,15 @@ void Lane::createNewImpuls() {
 
 void Lane::loop(){
   // Check whether the first player is pressing her button
-  if (digitalRead(button1) == HIGH) {
+  bool shootButtonPressed= digitalRead(button1) == HIGH;
+  if (shootButtonPressed) {
     // Create a new impulse if there has never been an impulse created (current_index == -1)
     // or if the last impulse is no longer at the beginning of the strip. (position > 1)
     // TODO: Impulses can currently overlap,
     // we should see whether this can become a problem at some point
     // Serial.println("Shoot Button is HIGH");
     if (current_index == -1 ||
-      impulses[current_index]->position > 1
+      impulses[current_index]->position > stripStart + 1
     ) {
       createNewImpuls();
     }
@@ -145,7 +145,7 @@ void Lane::loop(){
       // We should extend the current impulse, because it is still at the beginning.
       // We reset the position and extend its length to give the impression of a
       // longer impulse.
-      impulses[current_index]->position = 0;
+      impulses[current_index]->position = stripStart;
       impulses[current_index]->length++;
     }
   } else {
@@ -156,8 +156,25 @@ void Lane::loop(){
   for (int i = 0; i < strip->numPixels(); i++) {
     strip->setPixelColor(i, 0, 0, 0);
   }
+
+  // Colorize plates
+  RGB shootPlateColor;
+  shootPlateColor.r = shootButtonPressed ? 255 : 0;
+  shootPlateColor.g = 0;
+  shootPlateColor.b = 0;
+  for (int i = 0; i < stripStart; i++) {
+    strip->setPixelColor(i, shootPlateColor.r, shootPlateColor.g, shootPlateColor.b);
+  }
   
   // Loop over all impulses
+
+  RGB defendPlateColor;
+  defendPlateColor.r = 0;
+  defendPlateColor.g = 0;
+  defendPlateColor.b = 0;
+
+  bool defendButtonPressed = digitalRead(button2) == HIGH;
+  
   for (int i = 0; i < size_impulses_array; i++) {
     // Check whether the impulse is valid and initialized, otherwise skip this impulse
     if (impulses[i]->position == -1) {
@@ -172,17 +189,15 @@ void Lane::loop(){
 
     // Check whether the impulse is at the other end of the strip. If it is at the other end
     // and the second player is not pressing her button reduce the lifes of this player.
-    if (
-      pos + impulses[i]->length - 2 >= stripEnd - 1 &&
-      digitalRead(button2)==LOW
-    ) {
-      Lifes--;
-      if (hitSoundArmed) {
-        hitSoundArmed = false;
-        Serial.println("$S0");  
+
+    if (pos + impulses[i]->length - 2 >= stripEnd - 1) {
+      if (defendButtonPressed) {
+        defendPlateColor.g = 255;
+      } else {
+        Lifes--;
+        defendPlateColor.r = 255;
+        Serial.println(PLAYER_HIT_SOUND);
       }
-    } else {
-      hitSoundArmed = true;
     }
 
     // If the impulse is at the end of the strip, "disable" it,
@@ -194,6 +209,10 @@ void Lane::loop(){
       // If the impulse is still valid we proceed to the next position
       impulses[i]->position++;
     }
+  }
+
+  for (int i = stripEnd; i < strip->numPixels(); i++) {
+    strip->setPixelColor(i, defendPlateColor.r, defendPlateColor.g, defendPlateColor.b);
   }
 
   // Show all pixels
@@ -238,25 +257,31 @@ void setup() { // Running once after Arduino boots
   red.b = 0;
 
   Lanes_Array[0]=new Lane(PIXELS_LANE_1, LED_STRIP_PIN_LANE_1, BUTTON_PIN_SHOOT_LANE_1, BUTTON_PIN_DEFEND_LANE_1, STRIP_START_LANE_1, STRIP_END_LANE_1);
-  Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2, STRIP_START_LANE_1, STRIP_END_LANE_1);
-  Lanes_Array[2]=new Lane(PIXELS_LANE_3, LED_STRIP_PIN_LANE_3, BUTTON_PIN_SHOOT_LANE_3, BUTTON_PIN_DEFEND_LANE_3, STRIP_START_LANE_1, STRIP_END_LANE_1);
-  Lanes_Array[3]=new Lane(PIXELS_LANE_4, LED_STRIP_PIN_LANE_4, BUTTON_PIN_SHOOT_LANE_4, BUTTON_PIN_DEFEND_LANE_4, STRIP_START_LANE_1, STRIP_END_LANE_1);
-  Lanes_Array[4]=new Lane(PIXELS_LANE_5, LED_STRIP_PIN_LANE_5, BUTTON_PIN_SHOOT_LANE_5, BUTTON_PIN_DEFEND_LANE_5, STRIP_START_LANE_1, STRIP_END_LANE_1);
+  Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2, STRIP_START_LANE_2, STRIP_END_LANE_2);
+  Lanes_Array[2]=new Lane(PIXELS_LANE_3, LED_STRIP_PIN_LANE_3, BUTTON_PIN_SHOOT_LANE_3, BUTTON_PIN_DEFEND_LANE_3, STRIP_START_LANE_3, STRIP_END_LANE_3);
+  Lanes_Array[3]=new Lane(PIXELS_LANE_4, LED_STRIP_PIN_LANE_4, BUTTON_PIN_SHOOT_LANE_4, BUTTON_PIN_DEFEND_LANE_4, STRIP_START_LANE_4, STRIP_END_LANE_4);
+  Lanes_Array[4]=new Lane(PIXELS_LANE_5, LED_STRIP_PIN_LANE_5, BUTTON_PIN_SHOOT_LANE_5, BUTTON_PIN_DEFEND_LANE_5, STRIP_START_LANE_5, STRIP_END_LANE_5);
+
+  setupLifeDisplay();
 }
 
 void loop() { 
-   // Should run once every ~33ms to receive 30 frames per second
-   // Record the current milliseconds to track how long the logic
-   // takes to execute
+  // Should run once every ~33ms to receive 30 frames per second
+  // Record the current milliseconds to track how long the logic
+  // takes to execute
+   
   int ms= millis();
-  for (int i=0; i<NUM_LANES; i++){
-      Lanes_Array[i]->loop();
-    }
+  
+  for (int i=0; i<NUM_LANES; i++) {
+    Lanes_Array[i]->loop();
+  }
 
+  updateLifeDisplay();
   
   // Calculate the time it took to execute this iteration.
   ms = millis() - ms;
   int delayTime = 17 - ms;
+  
   // Wait at least 33 milliseconds until we continue with the next iteration
   if (delayTime > 0) {
     delay(delayTime);

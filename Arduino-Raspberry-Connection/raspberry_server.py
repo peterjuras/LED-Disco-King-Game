@@ -2,7 +2,7 @@ import time
 import serial
 import pygame.mixer
 
-SER = serial.Serial('/dev/ttyACM0', 9600)
+SERIAL = serial.Serial('/dev/ttyACM0', 9600)
 
 NUM_CHANNELS = 32
 pygame.mixer.init()
@@ -37,5 +37,5 @@ def play(serial_input):
         play_sound(serial_input)
 
 while True:
-    SERIAL_INPUT = serial.readline()
+    SERIAL_INPUT = SERIAL.readline()
     play(SERIAL_INPUT)
