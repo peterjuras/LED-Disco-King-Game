@@ -138,7 +138,7 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
 };
 
 void Lane::resetImpulses() {
-  for (int i = 0; i < size_impulses_array) {
+  for (int i = 0; i < size_impulses_array; i++) {
     impulses[current_index]->position = stripStart;
     impulses[current_index]->length = IMPULS_MIN_SIZE;
     impulses[current_index]->color = blue;

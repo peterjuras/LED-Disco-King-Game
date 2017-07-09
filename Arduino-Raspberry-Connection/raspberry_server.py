@@ -15,8 +15,8 @@ MUSIC = {
 }
 
 SOUNDS = {
-    '$S0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/doublekill.wav',
-    '$S1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster.wav'
+    '$S0': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/doublekill.wav'),
+    '$S1': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster.wav')
 }
 
 def play_music(serial_input):
@@ -28,7 +28,7 @@ current_channel = 0
 
 def play_sound(serial_input):
     global current_channel
-    pygame.mixer.Channel(current_channel).play(pygame.mixer.Sound(SOUNDS[serial_input]))
+    pygame.mixer.Channel(current_channel).play(SOUNDS[serial_input])
     current_channel = (current_channel + 1) % NUM_CHANNELS
 
 def play(serial_input):
