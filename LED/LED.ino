@@ -50,6 +50,10 @@ const int MAX_LIFES = 100;
 int Lifes = MAX_LIFES;
 const int DEFEND_BUFFER_SIZE = 15;
 
+int lastActions[10];
+int currentAction = 0;
+bool superShot = false;
+
 struct RGB {
   byte r;
   byte g;
@@ -58,15 +62,20 @@ struct RGB {
 
 // Music and Sounds
 
-const char BACKGROUND_MUSIC[] = "$M0";
-const char GAME_OVER_MUSIC[] = "$M1";
+const char GAME_OVER_MUSIC[] = "$M-1";
+const char BACKGROUND_MUSIC[] = "$M";
+const int NUMBER_OF_MUSIC_TRACKS = 1;
+int currentMusicTrack = 0;
 
-const char PLAYER_HIT_SOUND[] = "$S0";
+
+const char PLAYER_SUPERSHOT_SOUND[] = "$S0";
+const char PLAYER_HIT_SOUND[] = "$S2";
 const char PLAYER_SHOOT_SOUND[] = "$S1";
 
 // Colors structs
 RGB red;
 RGB blue;
+RGB yellow;
 
 class Impuls {
   public:
@@ -76,6 +85,7 @@ class Impuls {
     RGB color;
     Impuls(int pos, byte len, RGB col);
     void playHitSound();
+    bool supershot;
 };
 
 Impuls::Impuls(int pos, byte len, RGB col) {
@@ -84,12 +94,17 @@ Impuls::Impuls(int pos, byte len, RGB col) {
   color = col;
 
   hitSoundPlayed = false;
+  supershot = false;
 };
 
 void Impuls::playHitSound() {
   if (!hitSoundPlayed) {
     hitSoundPlayed = true;
-    Serial.println(PLAYER_HIT_SOUND);
+    if (supershot) {
+      Serial.println(PLAYER_SUPERSHOT_SOUND);
+    } else {
+      Serial.println(PLAYER_HIT_SOUND);
+    }
   }
 }
 
@@ -103,7 +118,8 @@ class Lane {
     int current_index;
     Lane(int num_pixels, int led_pin, int button1, int button2, int stripStart, int stripEnd);
     void createNewImpuls();
-    void loop();
+    void createSupershot();
+    void loop(int index);
     void setLaneColor(int r, int g, int b);
     void resetImpulses();
        
@@ -129,7 +145,7 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
   impulses = new Impuls*[size_impulses_array];
   // Fill Array with DummyImpulses
   for (int i = 0; i < size_impulses_array; i++) {
-    impulses[i] = new Impuls(-1, IMPULS_MIN_SIZE, red);
+    impulses[i] = new Impuls(-1, IMPULS_MIN_SIZE, blue);
   }
   current_index=-1;
   button1=but1;
@@ -141,10 +157,11 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
 
 void Lane::resetImpulses() {
   for (int i = 0; i < size_impulses_array; i++) {
-    impulses[current_index]->position = stripStart;
-    impulses[current_index]->length = IMPULS_MIN_SIZE;
-    impulses[current_index]->color = blue;
-    impulses[current_index]->hitSoundPlayed = false;
+    impulses[i]->position = -1;
+    impulses[i]->length = IMPULS_MIN_SIZE;
+    impulses[i]->color = blue;
+    impulses[i]->hitSoundPlayed = false;
+    impulses[i]->supershot = false;
   }
 }
 
@@ -157,8 +174,23 @@ void Lane::createNewImpuls() {
   impulses[current_index]->length = IMPULS_MIN_SIZE;
   impulses[current_index]->color = blue;
   impulses[current_index]->hitSoundPlayed = false;
+  impulses[current_index]->supershot = false;
 
-  Serial.println("$S1");
+  Serial.println(PLAYER_SHOOT_SOUND);
+};
+
+//New Impuls Function declaration
+void Lane::createSupershot() {
+  current_index = (current_index + 1) % size_impulses_array; // Rolling index, overwriting old impulses
+
+  // Re-initializè the impulse at the current position
+  impulses[current_index]->position = stripStart;
+  impulses[current_index]->length = IMPULS_MIN_SIZE * 6;
+  impulses[current_index]->color = yellow;
+  impulses[current_index]->hitSoundPlayed = false;
+  impulses[current_index]->supershot = true;
+
+  Serial.println(PLAYER_SHOOT_SOUND);
 };
 
 void Lane::setLaneColor(int r, int g, int b) {
@@ -168,15 +200,25 @@ void Lane::setLaneColor(int r, int g, int b) {
   strip->show();
 }
 
-void Lane::loop(){
+void saveLastAction(int index) {
+  if (lastActions[(currentAction - 1) % 10] == index) {
+    return;
+  } 
+  lastActions[currentAction] = index;
+  currentAction = (currentAction + 1) % 10;
+}
+
+void Lane::loop(int index){
   // Check whether the first player is pressing her button
   bool shootButtonPressed= digitalRead(button1) == HIGH;
-  if (shootButtonPressed) {
+
+  if (superShot) {
+    createSupershot();
+  } else if (shootButtonPressed) {
     // Create a new impulse if there has never been an impulse created (current_index == -1)
     // or if the last impulse is no longer at the beginning of the strip. (position > 1)
     // TODO: Impulses can currently overlap,
     // we should see whether this can become a problem at some point
-    // Serial.println("Shoot Button is HIGH");
     if (current_index == -1 ||
       impulses[current_index]->position > stripStart + 1
     ) {
@@ -189,8 +231,7 @@ void Lane::loop(){
       impulses[current_index]->position = stripStart;
       impulses[current_index]->length++;
     }
-  } else {
-      // Serial.println("Shoot Button is LOW");
+    saveLastAction(index);
   }
 
   // Turn all pixels off
@@ -254,7 +295,7 @@ void Lane::loop(){
     }
   }
 
-  for (int i = stripEnd; i < strip->numPixels(); i++) {
+  for (int i = stripEnd; i < strip->numPixels(); i++) {;
     strip->setPixelColor(i, defendPlateColor.r, defendPlateColor.g, defendPlateColor.b);
   }
 
@@ -292,7 +333,9 @@ void updateLifeDisplay() {
 
 void setupNewGame() {
   // Start music
-  Serial.println(BACKGROUND_MUSIC);
+  Serial.println(BACKGROUND_MUSIC + currentMusicTrack);
+  currentMusicTrack = (currentMusicTrack + 1) % NUMBER_OF_MUSIC_TRACKS;
+  
   Lifes = MAX_LIFES;
 
   for (int i=0; i<NUM_LANES; i++) {
@@ -357,27 +400,47 @@ uint32_t Wheel(byte WheelPos) {
   return Lanes_Array[0]->strip->Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-      
-    for (int n=0; n<NUM_LANES; n++) {
-      int stripNumPixels = Lanes_Array[n]->strip->numPixels();
-      
-      for(i=0; i< stripNumPixels; i++) {
-        Lanes_Array[n]->strip->setPixelColor(i, Wheel(((i * 256 / stripNumPixels) + j) & 255));
+//Theatre-style crawling lights with rainbow effect
+void theaterChaseRainbow(uint8_t wait) {
+  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
+    for (int q=0; q < 3; q++) {
+      for (int n=0; n<NUM_LANES; n++) {
+        int stripNumPixels = Lanes_Array[n]->strip->numPixels();
+        
+        for(int i=0; i< stripNumPixels; i = i + 3) {
+          Lanes_Array[n]->strip->setPixelColor(i+q, Wheel( (i+j) % 255));
+        }
+        
+        Lanes_Array[n]->strip->show();
       }
-      
-      Lanes_Array[n]->strip->show();
-    }
-  
-    if (interrupted()) {
-      idle = false;
-      break;
-    }
     
-    delay(wait);
+      if (interrupted()) {
+        idle = false;
+        return;
+      }
+
+      delay(wait);
+
+      for (int n=0; n<NUM_LANES; n++) {
+        int stripNumPixels = Lanes_Array[n]->strip->numPixels();
+        
+        for(int i=0; i< stripNumPixels; i = i + 3) {
+          Lanes_Array[n]->strip->setPixelColor(i+q, 0);
+        }
+      }
+    }
+  }
+}
+
+void checkCheatCode() {
+  if (
+    lastActions[(currentAction - 1) % 10] == 2 &&
+    lastActions[(currentAction - 2) % 10] == 3 &&
+    lastActions[(currentAction - 3) % 10] == 1 &&
+    lastActions[(currentAction - 4) % 10] == 4 &&
+    lastActions[(currentAction - 5) % 10] == 0
+  ) {
+    superShot = true;
   }
 }
 
@@ -392,6 +455,10 @@ void setup() { // Running once after Arduino boots
   blue.r = 0;
   blue.g = 0;
   blue.b = 255;
+
+  yellow.r = 255;
+  yellow.g = 255;
+  yellow.b = 255;
 
   Lanes_Array[0]=new Lane(PIXELS_LANE_1, LED_STRIP_PIN_LANE_1, BUTTON_PIN_SHOOT_LANE_1, BUTTON_PIN_DEFEND_LANE_1, STRIP_START_LANE_1, STRIP_END_LANE_1);
   Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2, STRIP_START_LANE_2, STRIP_END_LANE_2);
@@ -409,9 +476,11 @@ void loop() {
   // Record the current milliseconds to track how long the logic
   // takes to execute
 
+  checkCheatCode();
+
   if (idle) {
     // Idle animation check buttons
-    rainbowCycle(20);
+    theaterChaseRainbow(50);
     return;
   }
 
@@ -423,7 +492,12 @@ void loop() {
   int ms= millis();
   
   for (int i=0; i<NUM_LANES; i++) {
-    Lanes_Array[i]->loop();
+    Lanes_Array[i]->loop(i);
+  }
+
+  if (superShot) {
+    superShot = false;
+    saveLastAction(-1);
   }
 
   updateLifeDisplay();
