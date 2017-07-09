@@ -21,7 +21,7 @@ SOUNDS = {
 def play_music(serial_input):
     pygame.mixer.music.stop()
     pygame.mixer.music.load(MUSIC[serial_input])
-    pygame.mixer.music.play()
+    pygame.mixer.music.play(loops=-1)
 
 current_channel = 0
 
@@ -36,10 +36,6 @@ def play(serial_input):
     elif serial_input.startswith('$S'):
         play_sound(serial_input)
 
-play('$M0')
-
 while True:
     SERIAL_INPUT = serial.readline()
-
-    print 'Playing sound'
     play(SERIAL_INPUT)

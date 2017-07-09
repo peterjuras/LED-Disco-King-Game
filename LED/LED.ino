@@ -2,26 +2,60 @@
 #include "Arduino.h"
 
 // Lane 1
-const int LED_STRIP_PIN_LANE_1 = 5;
-const int BUTTON_PIN_SHOOT_LANE_1 = 10;
+const int LED_STRIP_PIN_LANE_1 = 2;
+const int BUTTON_PIN_SHOOT_LANE_1 = 8;
 const int BUTTON_PIN_DEFEND_LANE_1 = 11;
+const int STRIP_START_LANE_1 = 25;
+const int STRIP_END_LANE_1 = 125;
 // Lane 2
-const int LED_STRIP_PIN_LANE_2 = 6;
-const int BUTTON_PIN_SHOOT_LANE_2 = 11;
+const int LED_STRIP_PIN_LANE_2 = 3;
+const int BUTTON_PIN_SHOOT_LANE_2 = 9;
 const int BUTTON_PIN_DEFEND_LANE_2 = 10;
+const int STRIP_START_LANE_2 = 25;
+const int STRIP_END_LANE_2 = 125;
+// Lane 3
+const int LED_STRIP_PIN_LANE_3 = 4;
+const int BUTTON_PIN_SHOOT_LANE_3 = 10;
+const int BUTTON_PIN_DEFEND_LANE_3 = 10;
+const int STRIP_START_LANE_3 = 25;
+const int STRIP_END_LANE_3 = 125;
+// Lane 4
+const int LED_STRIP_PIN_LANE_4 = 5;
+const int BUTTON_PIN_SHOOT_LANE_4 = 11;
+const int BUTTON_PIN_DEFEND_LANE_4 = 10;
+const int STRIP_START_LANE_4 = 25;
+const int STRIP_END_LANE_4 = 125;
+// Lane 5
+const int LED_STRIP_PIN_LANE_5 = 6;
+const int BUTTON_PIN_SHOOT_LANE_5 = 12;
+const int BUTTON_PIN_DEFEND_LANE_5 = 10;
+const int STRIP_START_LANE_5 = 25;
+const int STRIP_END_LANE_5 = 125;
+
+// Life Lane
+const int PIXELS_LANE_LIFE = 150;
+const int LED_STRIP_PIN_LIFE = 1;
 
 // Number of LEDs of a single strip
-const int PIXELS_LANE_1 = 50; 
-const int PIXELS_LANE_2 = 50;
+const int PIXELS_LANE_1 = 150;
+const int PIXELS_LANE_2 = 150;
+const int PIXELS_LANE_3 = 150;
+const int PIXELS_LANE_4 = 150;
+const int PIXELS_LANE_5 = 150;
 
 const byte IMPULS_MIN_SIZE = 4; // Minimum length of an impulse
-int Lifes = 100;
+const int MAX_LIFES = 100;
+int Lifes = MAX_LIFES;
 
 struct RGB {
   byte r;
   byte g;
   byte b;
 };
+
+// Music and Sounds
+
+char BACKGROUND_MUSIC[] = "$M0";
 
 // Colors structs
 RGB red;
@@ -44,9 +78,12 @@ class Lane {
   public:
     Adafruit_NeoPixel* strip;
     //dynamically allocated array of *Impuls
+    int stripStart;
+    int stripEnd;
+    bool hitSoundArmed;
     Impuls** impulses;
     int current_index;
-    Lane(int num_pixels, int led_pin, int button1, int button2);
+    Lane(int num_pixels, int led_pin, int button1, int button2, int stripStart, int stripEnd);
     void createNewImpuls();
     void loop();
     
@@ -57,7 +94,7 @@ class Lane {
 };
 
 //Lane Constructor
-Lane::Lane(int num_pixels, int led_pin, int but1, int but2){
+Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd){
   strip= new Adafruit_NeoPixel(num_pixels, led_pin, NEO_GRB);
   strip->begin();
   strip->show(); // Initialize all LEDs to be off
@@ -76,6 +113,9 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2){
   current_index=-1;
   button1=but1;
   button2=but2;
+  stripStart = sStart;
+  stripEnd = sEnd;
+  hitSoundArmed = true;
 };
 
 //New Impuls Function declaration
@@ -83,7 +123,7 @@ void Lane::createNewImpuls() {
   current_index = (current_index + 1) % size_impulses_array; // Rolling index, overwriting old impulses
 
   // Re-initializè the impulse at the current position
-  impulses[current_index]->position = 0;
+  impulses[current_index]->position = stripStart;
   impulses[current_index]->length = IMPULS_MIN_SIZE;
   impulses[current_index]->color = red;
 };
@@ -95,7 +135,7 @@ void Lane::loop(){
     // or if the last impulse is no longer at the beginning of the strip. (position > 1)
     // TODO: Impulses can currently overlap,
     // we should see whether this can become a problem at some point
-    Serial.println("Shoot Button is HIGH");
+    // Serial.println("Shoot Button is HIGH");
     if (current_index == -1 ||
       impulses[current_index]->position > 1
     ) {
@@ -109,7 +149,7 @@ void Lane::loop(){
       impulses[current_index]->length++;
     }
   } else {
-      Serial.println("Shoot Button is LOW");
+      // Serial.println("Shoot Button is LOW");
   }
 
   // Turn all pixels off
@@ -126,22 +166,28 @@ void Lane::loop(){
 
     // Colorize all relevant pixels of the strip
     int pos = impulses[i]->position;
-    for (int j = 0; j < impulses[i]->length && pos + j < strip->numPixels(); j++) {
+    for (int j = 0; j < impulses[i]->length && pos + j < stripEnd; j++) {
       strip->setPixelColor(pos + j, impulses[i]->color.r, impulses[i]->color.g, impulses[i]->color.b);
     }
 
     // Check whether the impulse is at the other end of the strip. If it is at the other end
     // and the second player is not pressing her button reduce the lifes of this player.
     if (
-      pos + impulses[i]->length - 2 >= strip->numPixels() - 1 &&
+      pos + impulses[i]->length - 2 >= stripEnd - 1 &&
       digitalRead(button2)==LOW
     ) {
       Lifes--;
+      if (hitSoundArmed) {
+        hitSoundArmed = false;
+        Serial.println("$S0");  
+      }
+    } else {
+      hitSoundArmed = true;
     }
 
     // If the impulse is at the end of the strip, "disable" it,
     // by setting the position back to the invalid value of -1
-    if (pos == strip->numPixels() - 1) {
+    if (pos == stripEnd - 1) {
       impulses[i]->position = -1;
     }
     else {
@@ -154,19 +200,48 @@ void Lane::loop(){
   strip->show();
 };
 
-const int NUM_LANES = 2;
+const int NUM_LANES = 5;
 Lane* Lanes_Array[NUM_LANES];
 
+Adafruit_NeoPixel* lifeStrip = new Adafruit_NeoPixel(PIXELS_LANE_LIFE, LED_STRIP_PIN_LIFE, NEO_GRB);
+
+void setupLifeDisplay() {
+  lifeStrip->begin();
+  lifeStrip->show();
+  lifeStrip->setBrightness(150);
+}
+
+void updateLifeDisplay() {
+  int stripPixels = lifeStrip->numPixels();
+  int usableLifes = max(Lifes, 0);
+  int pixelThreshold = (usableLifes / MAX_LIFES) * stripPixels;
+  
+  for (int i = 0; i < stripPixels; i++) {
+    if (i >= pixelThreshold) {
+      lifeStrip->setPixelColor(i, 0, 0, 0);
+    } else {
+      lifeStrip->setPixelColor(i, 0, 255, 0);
+    }
+  }
+  lifeStrip->show();
+}
+
 void setup() { // Running once after Arduino boots
-  Serial.begin(9600); // TODO: Remove if we only use Serial for print statements
+  Serial.begin(9600);
+
+  // Start music
+  Serial.println(BACKGROUND_MUSIC);
 
   // Initialize "red" to be red
   red.r = 255;
   red.g = 0;
   red.b = 0;
 
-  Lanes_Array[0]=new Lane(PIXELS_LANE_1, LED_STRIP_PIN_LANE_1, BUTTON_PIN_SHOOT_LANE_1, BUTTON_PIN_DEFEND_LANE_1);
-  Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2);
+  Lanes_Array[0]=new Lane(PIXELS_LANE_1, LED_STRIP_PIN_LANE_1, BUTTON_PIN_SHOOT_LANE_1, BUTTON_PIN_DEFEND_LANE_1, STRIP_START_LANE_1, STRIP_END_LANE_1);
+  Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2, STRIP_START_LANE_1, STRIP_END_LANE_1);
+  Lanes_Array[2]=new Lane(PIXELS_LANE_3, LED_STRIP_PIN_LANE_3, BUTTON_PIN_SHOOT_LANE_3, BUTTON_PIN_DEFEND_LANE_3, STRIP_START_LANE_1, STRIP_END_LANE_1);
+  Lanes_Array[3]=new Lane(PIXELS_LANE_4, LED_STRIP_PIN_LANE_4, BUTTON_PIN_SHOOT_LANE_4, BUTTON_PIN_DEFEND_LANE_4, STRIP_START_LANE_1, STRIP_END_LANE_1);
+  Lanes_Array[4]=new Lane(PIXELS_LANE_5, LED_STRIP_PIN_LANE_5, BUTTON_PIN_SHOOT_LANE_5, BUTTON_PIN_DEFEND_LANE_5, STRIP_START_LANE_1, STRIP_END_LANE_1);
 }
 
 void loop() { 
