@@ -60,6 +60,7 @@ const char BACKGROUND_MUSIC[] = "$M0";
 const char GAME_OVER_MUSIC[] = "$M1";
 
 const char PLAYER_HIT_SOUND[] = "$S0";
+const char PLAYER_SHOOT_SOUND[] = "$S1";
 
 // Colors structs
 RGB red;
@@ -102,7 +103,8 @@ class Lane {
     void createNewImpuls();
     void loop();
     void setLaneColor(int r, int g, int b);
-    
+    void resetImpulses();
+       
   private:
     int button1;
     int button2;
@@ -135,6 +137,15 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
   defendBuffer = 0;
 };
 
+void Lane::resetImpulses() {
+  for (int i = 0; i < size_impulses_array) {
+    impulses[current_index]->position = stripStart;
+    impulses[current_index]->length = IMPULS_MIN_SIZE;
+    impulses[current_index]->color = blue;
+    impulses[current_index]->hitSoundPlayed = false;
+  }
+}
+
 //New Impuls Function declaration
 void Lane::createNewImpuls() {
   current_index = (current_index + 1) % size_impulses_array; // Rolling index, overwriting old impulses
@@ -144,6 +155,8 @@ void Lane::createNewImpuls() {
   impulses[current_index]->length = IMPULS_MIN_SIZE;
   impulses[current_index]->color = blue;
   impulses[current_index]->hitSoundPlayed = false;
+
+  Serial.println("$S1");
 };
 
 void Lane::setLaneColor(int r, int g, int b) {
@@ -279,6 +292,10 @@ void setupNewGame() {
   // Start music
   Serial.println(BACKGROUND_MUSIC);
   Lifes = MAX_LIFES;
+
+  for (int i=0; i<NUM_LANES; i++) {
+    Lanes_Array[i]->resetImpulses();
+  }
 }
 
 void blinkAllLanes(int r, int g, int b, int ms) {
@@ -295,6 +312,7 @@ void blinkAllLanes(int r, int g, int b, int ms) {
 void endGame() {
   Serial.println(GAME_OVER_MUSIC);
 
+  blinkAllLanes(255, 0, 0, 1000);
   blinkAllLanes(255, 0, 0, 1000);
   blinkAllLanes(255, 0, 0, 1000);
   blinkAllLanes(255, 0, 0, 1000);

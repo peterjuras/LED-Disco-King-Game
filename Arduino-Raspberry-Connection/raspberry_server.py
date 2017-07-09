@@ -16,7 +16,7 @@ MUSIC = {
 
 SOUNDS = {
     '$S0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/doublekill.wav',
-    '$S1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/assasin.wav'
+    '$S1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster.wav'
 }
 
 def play_music(serial_input):
