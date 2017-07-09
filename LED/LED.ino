@@ -2,34 +2,34 @@
 #include "Arduino.h"
 
 // Lane 1
-const int LED_STRIP_PIN_LANE_1 = 23;
-const int BUTTON_PIN_SHOOT_LANE_1 = 6;
-const int BUTTON_PIN_DEFEND_LANE_1 = 11;
-const int STRIP_START_LANE_1 = 25;
+const int LED_STRIP_PIN_LANE_1 = 22;
+const int BUTTON_PIN_SHOOT_LANE_1 = 3;
+const int BUTTON_PIN_DEFEND_LANE_1 = 7;
+const int STRIP_START_LANE_1 = 32;
 const int STRIP_END_LANE_1 = 125;
 // Lane 2
-const int LED_STRIP_PIN_LANE_2 = 30;
-const int BUTTON_PIN_SHOOT_LANE_2 = 2;
-const int BUTTON_PIN_DEFEND_LANE_2 = 10;
-const int STRIP_START_LANE_2 = 25;
+const int LED_STRIP_PIN_LANE_2 = 26;
+const int BUTTON_PIN_SHOOT_LANE_2 = 5;
+const int BUTTON_PIN_DEFEND_LANE_2 = 8;
+const int STRIP_START_LANE_2 = 32;
 const int STRIP_END_LANE_2 = 125;
 // Lane 3
-const int LED_STRIP_PIN_LANE_3 = 22;
-const int BUTTON_PIN_SHOOT_LANE_3 = 3;
+const int LED_STRIP_PIN_LANE_3 = 27;
+const int BUTTON_PIN_SHOOT_LANE_3 = 4;
 const int BUTTON_PIN_DEFEND_LANE_3 = 9;
-const int STRIP_START_LANE_3 = 25;
+const int STRIP_START_LANE_3 = 31;
 const int STRIP_END_LANE_3 = 125;
 // Lane 4
-const int LED_STRIP_PIN_LANE_4 = 26;
-const int BUTTON_PIN_SHOOT_LANE_4 = 4;
-const int BUTTON_PIN_DEFEND_LANE_4 = 8;
-const int STRIP_START_LANE_4 = 25;
+const int LED_STRIP_PIN_LANE_4 = 23;
+const int BUTTON_PIN_SHOOT_LANE_4 = 6;
+const int BUTTON_PIN_DEFEND_LANE_4 = 10;
+const int STRIP_START_LANE_4 = 32;
 const int STRIP_END_LANE_4 = 125;
 // Lane 5
-const int LED_STRIP_PIN_LANE_5 = 27;
-const int BUTTON_PIN_SHOOT_LANE_5 = 5;
-const int BUTTON_PIN_DEFEND_LANE_5 = 7;
-const int STRIP_START_LANE_5 = 25;
+const int LED_STRIP_PIN_LANE_5 = 30;
+const int BUTTON_PIN_SHOOT_LANE_5 = 2;
+const int BUTTON_PIN_DEFEND_LANE_5 = 11;
+const int STRIP_START_LANE_5 = 23;
 const int STRIP_END_LANE_5 = 125;
 
 // Life Lane
@@ -68,7 +68,7 @@ struct RGB {
 
 const char GAME_OVER_MUSIC[] = "$M-1";
 const char BACKGROUND_MUSIC[] = "$M";
-const int NUMBER_OF_MUSIC_TRACKS = 1;
+const int NUMBER_OF_MUSIC_TRACKS = 5;
 int currentMusicTrack = 0;
 
 
@@ -270,7 +270,8 @@ void Lane::loop(int index){
 
   int defendButton = swapped ? button1 : button2;
   if (digitalRead(defendButton) == HIGH) {
-    defendBuffer = DEFEND_BUFFER_SIZE;  
+    defendBuffer = DEFEND_BUFFER_SIZE;
+    defendPlateColor.b = 255;
   }
   
   for (int i = 0; i < size_impulses_array; i++) {
@@ -296,6 +297,7 @@ void Lane::loop(int index){
           defendPlateColor.r = 255;
           impulses[i]->playHitSound();
         }
+        defendPlateColor.b = 0;
       }
   
       // If the impulse is at the end of the strip, "disable" it,
@@ -369,14 +371,14 @@ void updateLifeDisplay() {
   float stripPixels = lifeStrip->numPixels();
   float usableLifes = max(Lifes, 0);
   float lifePercentage = (usableLifes / MAX_LIFES) * stripPixels;
-  float lifeThreshold = stripPixels - lifePercentage;
+  float lifeThreshold = swapped ? lifePercentage : stripPixels - lifePercentage;
   
   for (float i = 0; i < stripPixels; i++) {
     if (swapped) {
-      if (i <= lifeThreshold) {
-        lifeStrip->setPixelColor(i, 0, 255, 0);
-      } else {
+      if (i >= lifeThreshold) { 
         lifeStrip->setPixelColor(i, 0, 0, 0);
+      } else {
+        lifeStrip->setPixelColor(i, 0, 255, 0);
       }
     } else {
       if (i >= lifeThreshold) {
@@ -523,6 +525,10 @@ void theaterChaseRainbow(uint8_t wait) {
         
         Lanes_Array[n]->strip->show();
       }
+      for (int i = 0; i < lifeStrip->numPixels(); i++) {
+        lifeStrip->setPixelColor(i+q, Wheel( (i+j) % 255));
+      }
+      lifeStrip->show();
     
       if (interrupted()) {
         idle = false;
@@ -585,6 +591,13 @@ void loop() {
   // Should run once every ~33ms to receive 30 frames per second
   // Record the current milliseconds to track how long the logic
   // takes to execute
+
+//  for (int i=0; i<NUM_LANES; i++) {
+//    Lanes_Array[i]->setLaneColor(255, 255, 255);
+//    delay(1000);
+//    Lanes_Array[i]->setLaneColor(0, 0, 0);
+//  }
+//  return;
 
   checkCheatCode();
 

@@ -12,7 +12,11 @@ print pygame.mixer.get_num_channels()
 
 MUSIC = {
     '$M-1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Mario-Gameover.mp3',
-    '$M0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Stayin-Alive.mp3'
+    '$M0': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Stayin-Alive.mp3',
+    '$M1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Hot-Stuff.mp3',
+    '$M2': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Abba-Gimme.mp3',
+    '$M3': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/YMCA.mp3',
+    '$M4': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Aerobic.mp3'
 }
 
 SOUNDS = {
