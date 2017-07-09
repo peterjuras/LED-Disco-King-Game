@@ -37,5 +37,5 @@ def play(serial_input):
         play_sound(serial_input)
 
 while True:
-    SERIAL_INPUT = SERIAL.readline()
+    SERIAL_INPUT = SERIAL.readline().replace('\n', '').replace('\r', '')
     play(SERIAL_INPUT)

@@ -4,31 +4,31 @@
 // Lane 1
 const int LED_STRIP_PIN_LANE_1 = 22;
 const int BUTTON_PIN_SHOOT_LANE_1 = 6;
-const int BUTTON_PIN_DEFEND_LANE_1 = 40;
+const int BUTTON_PIN_DEFEND_LANE_1 = 11;
 const int STRIP_START_LANE_1 = 25;
 const int STRIP_END_LANE_1 = 125;
 // Lane 2
 const int LED_STRIP_PIN_LANE_2 = 23;
 const int BUTTON_PIN_SHOOT_LANE_2 = 2;
-const int BUTTON_PIN_DEFEND_LANE_2 = 41;
+const int BUTTON_PIN_DEFEND_LANE_2 = 10;
 const int STRIP_START_LANE_2 = 25;
 const int STRIP_END_LANE_2 = 125;
 // Lane 3
 const int LED_STRIP_PIN_LANE_3 = 26;
 const int BUTTON_PIN_SHOOT_LANE_3 = 3;
-const int BUTTON_PIN_DEFEND_LANE_3 = 45;
+const int BUTTON_PIN_DEFEND_LANE_3 = 9;
 const int STRIP_START_LANE_3 = 25;
 const int STRIP_END_LANE_3 = 125;
 // Lane 4
 const int LED_STRIP_PIN_LANE_4 = 27;
 const int BUTTON_PIN_SHOOT_LANE_4 = 4;
-const int BUTTON_PIN_DEFEND_LANE_4 = 44;
+const int BUTTON_PIN_DEFEND_LANE_4 = 8;
 const int STRIP_START_LANE_4 = 25;
 const int STRIP_END_LANE_4 = 125;
 // Lane 5
 const int LED_STRIP_PIN_LANE_5 = 30;
 const int BUTTON_PIN_SHOOT_LANE_5 = 5;
-const int BUTTON_PIN_DEFEND_LANE_5 = 49;
+const int BUTTON_PIN_DEFEND_LANE_5 = 7;
 const int STRIP_START_LANE_5 = 25;
 const int STRIP_END_LANE_5 = 125;
 
