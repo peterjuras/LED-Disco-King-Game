@@ -5,6 +5,7 @@ import pygame.mixer
 SERIAL = serial.Serial('/dev/ttyACM0', 9600)
 
 NUM_CHANNELS = 32
+pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.mixer.init()
 pygame.mixer.set_num_channels(NUM_CHANNELS)
 print pygame.mixer.get_num_channels()
@@ -16,7 +17,7 @@ MUSIC = {
 
 SOUNDS = {
     '$S0': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/UT/doublekill.wav'),
-    '$S1': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster.wav')
+    '$S1': pygame.mixer.Sound('/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/SW-Blaster-new.wav')
 }
 
 def play_music(serial_input):

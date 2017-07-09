@@ -35,6 +35,8 @@ const int STRIP_END_LANE_5 = 125;
 // Life Lane
 const int LED_STRIP_PIN_LIFE = 40;
 
+bool idle = true;
+
 // Number of LEDs of a single strip
 const int PIXELS_LANE_1 = 150;
 const int PIXELS_LANE_2 = 150;
@@ -296,6 +298,8 @@ void setupNewGame() {
   for (int i=0; i<NUM_LANES; i++) {
     Lanes_Array[i]->resetImpulses();
   }
+
+  idle = true;
 }
 
 void blinkAllLanes(int r, int g, int b, int ms) {
@@ -318,6 +322,63 @@ void endGame() {
   blinkAllLanes(255, 0, 0, 1000);
   blinkAllLanes(255, 0, 0, 1000);
   blinkAllLanes(0, 255, 0, 1000);
+}
+
+bool interrupted() {
+  return
+    digitalRead(BUTTON_PIN_SHOOT_LANE_1) == HIGH ||
+    digitalRead(BUTTON_PIN_DEFEND_LANE_1) == HIGH ||
+    
+    digitalRead(BUTTON_PIN_SHOOT_LANE_2) == HIGH ||
+    digitalRead(BUTTON_PIN_DEFEND_LANE_2) == HIGH ||
+    
+    digitalRead(BUTTON_PIN_SHOOT_LANE_3) == HIGH ||
+    digitalRead(BUTTON_PIN_DEFEND_LANE_3) == HIGH ||
+    
+    digitalRead(BUTTON_PIN_SHOOT_LANE_4) == HIGH ||
+    digitalRead(BUTTON_PIN_DEFEND_LANE_4) == HIGH ||
+    
+    digitalRead(BUTTON_PIN_SHOOT_LANE_5) == HIGH ||
+    digitalRead(BUTTON_PIN_DEFEND_LANE_5) == HIGH;
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return Lanes_Array[0]->strip->Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return Lanes_Array[0]->strip->Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return Lanes_Array[0]->strip->Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+      
+    for (int n=0; n<NUM_LANES; n++) {
+      int stripNumPixels = Lanes_Array[n]->strip->numPixels();
+      
+      for(i=0; i< stripNumPixels; i++) {
+        Lanes_Array[n]->strip->setPixelColor(i, Wheel(((i * 256 / stripNumPixels) + j) & 255));
+      }
+      
+      Lanes_Array[n]->strip->show();
+    }
+  
+    if (interrupted()) {
+      idle = false;
+      break;
+    }
+    
+    delay(wait);
+  }
 }
 
 void setup() { // Running once after Arduino boots
@@ -347,6 +408,12 @@ void loop() {
   // Should run once every ~33ms to receive 30 frames per second
   // Record the current milliseconds to track how long the logic
   // takes to execute
+
+  if (idle) {
+    // Idle animation check buttons
+    rainbowCycle(20);
+    return;
+  }
 
   if (Lifes < 0) {
     endGame();
