@@ -2,31 +2,31 @@
 #include "Arduino.h"
 
 // Lane 1
-const int LED_STRIP_PIN_LANE_1 = 22;
+const int LED_STRIP_PIN_LANE_1 = 23;
 const int BUTTON_PIN_SHOOT_LANE_1 = 6;
 const int BUTTON_PIN_DEFEND_LANE_1 = 11;
 const int STRIP_START_LANE_1 = 25;
 const int STRIP_END_LANE_1 = 125;
 // Lane 2
-const int LED_STRIP_PIN_LANE_2 = 23;
+const int LED_STRIP_PIN_LANE_2 = 30;
 const int BUTTON_PIN_SHOOT_LANE_2 = 2;
 const int BUTTON_PIN_DEFEND_LANE_2 = 10;
 const int STRIP_START_LANE_2 = 25;
 const int STRIP_END_LANE_2 = 125;
 // Lane 3
-const int LED_STRIP_PIN_LANE_3 = 26;
+const int LED_STRIP_PIN_LANE_3 = 22;
 const int BUTTON_PIN_SHOOT_LANE_3 = 3;
 const int BUTTON_PIN_DEFEND_LANE_3 = 9;
 const int STRIP_START_LANE_3 = 25;
 const int STRIP_END_LANE_3 = 125;
 // Lane 4
-const int LED_STRIP_PIN_LANE_4 = 27;
+const int LED_STRIP_PIN_LANE_4 = 26;
 const int BUTTON_PIN_SHOOT_LANE_4 = 4;
 const int BUTTON_PIN_DEFEND_LANE_4 = 8;
 const int STRIP_START_LANE_4 = 25;
 const int STRIP_END_LANE_4 = 125;
 // Lane 5
-const int LED_STRIP_PIN_LANE_5 = 30;
+const int LED_STRIP_PIN_LANE_5 = 27;
 const int BUTTON_PIN_SHOOT_LANE_5 = 5;
 const int BUTTON_PIN_DEFEND_LANE_5 = 7;
 const int STRIP_START_LANE_5 = 25;
@@ -50,9 +50,13 @@ const int MAX_LIFES = 100;
 int Lifes = MAX_LIFES;
 const int DEFEND_BUFFER_SIZE = 15;
 
+unsigned long lastRunTime = 0;
+
 int lastActions[10];
 int currentAction = 0;
 bool superShot = false;
+
+bool swapped = true;
 
 struct RGB {
   byte r;
@@ -69,8 +73,8 @@ int currentMusicTrack = 0;
 
 
 const char PLAYER_SUPERSHOT_SOUND[] = "$S0";
-const char PLAYER_HIT_SOUND[] = "$S2";
 const char PLAYER_SHOOT_SOUND[] = "$S1";
+const char PLAYER_HIT_SOUND[] = "$S2";
 
 // Colors structs
 RGB red;
@@ -125,7 +129,7 @@ class Lane {
        
   private:
     int button1;
-    int button2;
+    int button2;  
     int size_impulses_array;
     int defendBuffer;
 };
@@ -170,7 +174,7 @@ void Lane::createNewImpuls() {
   current_index = (current_index + 1) % size_impulses_array; // Rolling index, overwriting old impulses
 
   // Re-initializè the impulse at the current position
-  impulses[current_index]->position = stripStart;
+  impulses[current_index]->position = swapped ? stripEnd : stripStart;
   impulses[current_index]->length = IMPULS_MIN_SIZE;
   impulses[current_index]->color = blue;
   impulses[current_index]->hitSoundPlayed = false;
@@ -184,7 +188,7 @@ void Lane::createSupershot() {
   current_index = (current_index + 1) % size_impulses_array; // Rolling index, overwriting old impulses
 
   // Re-initializè the impulse at the current position
-  impulses[current_index]->position = stripStart;
+  impulses[current_index]->position = swapped ? stripEnd : stripStart;
   impulses[current_index]->length = IMPULS_MIN_SIZE * 6;
   impulses[current_index]->color = yellow;
   impulses[current_index]->hitSoundPlayed = false;
@@ -210,7 +214,9 @@ void saveLastAction(int index) {
 
 void Lane::loop(int index){
   // Check whether the first player is pressing her button
-  bool shootButtonPressed= digitalRead(button1) == HIGH;
+
+  int shootButton = swapped ? button2 : button1;
+  bool shootButtonPressed = digitalRead(shootButton) == HIGH;
 
   if (superShot) {
     createSupershot();
@@ -220,7 +226,7 @@ void Lane::loop(int index){
     // TODO: Impulses can currently overlap,
     // we should see whether this can become a problem at some point
     if (current_index == -1 ||
-      impulses[current_index]->position > stripStart + 1
+      impulses[current_index]->position > (swapped ? stripEnd - 1 : stripStart + 1)
     ) {
       createNewImpuls();
     }
@@ -228,7 +234,7 @@ void Lane::loop(int index){
       // We should extend the current impulse, because it is still at the beginning.
       // We reset the position and extend its length to give the impression of a
       // longer impulse.
-      impulses[current_index]->position = stripStart;
+      impulses[current_index]->position = swapped ? stripEnd : stripStart;
       impulses[current_index]->length++;
     }
     saveLastAction(index);
@@ -244,8 +250,15 @@ void Lane::loop(int index){
   shootPlateColor.r = 0;
   shootPlateColor.g = shootButtonPressed ? 255 : 0;
   shootPlateColor.b = 0;
-  for (int i = 0; i < stripStart; i++) {
-    strip->setPixelColor(i, shootPlateColor.r, shootPlateColor.g, shootPlateColor.b);
+
+  if (swapped) {
+    for (int i = stripEnd; i < strip->numPixels(); i++) {
+      strip->setPixelColor(i, shootPlateColor.r, shootPlateColor.g, shootPlateColor.b);
+    }
+  } else {
+    for (int i = 0; i < stripStart; i++) {
+      strip->setPixelColor(i, shootPlateColor.r, shootPlateColor.g, shootPlateColor.b);
+    }
   }
   
   // Loop over all impulses
@@ -255,7 +268,8 @@ void Lane::loop(int index){
   defendPlateColor.g = 0;
   defendPlateColor.b = 0;
 
-  if (digitalRead(button2) == HIGH) {
+  int defendButton = swapped ? button1 : button2;
+  if (digitalRead(defendButton) == HIGH) {
     defendBuffer = DEFEND_BUFFER_SIZE;  
   }
   
@@ -265,38 +279,73 @@ void Lane::loop(int index){
       continue;
     }
 
-    // Colorize all relevant pixels of the strip
-    int pos = impulses[i]->position;
-    for (int j = 0; j < impulses[i]->length && pos + j < stripEnd; j++) {
-      strip->setPixelColor(pos + j, impulses[i]->color.r, impulses[i]->color.g, impulses[i]->color.b);
-    }
-
-    // Check whether the impulse is at the other end of the strip. If it is at the other end
-    // and the second player is not pressing her button reduce the lifes of this player.
-
-    if (pos + impulses[i]->length - 2 >= stripEnd - 1) {
-      if (defendBuffer > 0) {
-        defendPlateColor.g = 255;
-      } else {
-        Lifes--;
-        defendPlateColor.r = 255;
-        impulses[i]->playHitSound();
+    if (swapped) {      
+      // Colorize all relevant pixels of the strip
+      int pos = impulses[i]->position;
+      for (int j = pos - impulses[i]->length; j <= pos; j++) {
+        strip->setPixelColor(j, impulses[i]->color.r, impulses[i]->color.g, impulses[i]->color.b);
       }
-    }
-
-    // If the impulse is at the end of the strip, "disable" it,
-    // by setting the position back to the invalid value of -1
-    if (pos == stripEnd - 1) {
-      impulses[i]->position = -1;
-    }
-    else {
-      // If the impulse is still valid we proceed to the next position
-      impulses[i]->position++;
+  
+      // Check whether the impulse is at the other end of the strip. If it is at the other end
+      // and the second player is not pressing her button reduce the lifes of this player.
+      if (pos - impulses[i]->length - 2 <= stripStart) {
+        if (defendBuffer > 0) {
+          defendPlateColor.g = 255;
+        } else {
+          Lifes--;
+          defendPlateColor.r = 255;
+          impulses[i]->playHitSound();
+        }
+      }
+  
+      // If the impulse is at the end of the strip, "disable" it,
+      // by setting the position back to the invalid value of -1
+      if (pos == stripStart) {
+        impulses[i]->position = -1;
+      }
+      else {
+        // If the impulse is still valid we proceed to the next position
+        impulses[i]->position--;
+      }
+    } else {
+      // Colorize all relevant pixels of the strip
+      int pos = impulses[i]->position;
+      for (int j = 0; j < impulses[i]->length && pos + j < stripEnd; j++) {
+        strip->setPixelColor(pos + j, impulses[i]->color.r, impulses[i]->color.g, impulses[i]->color.b);
+      }
+  
+      // Check whether the impulse is at the other end of the strip. If it is at the other end
+      // and the second player is not pressing her button reduce the lifes of this player.
+      if (pos + impulses[i]->length - 2 >= stripEnd - 1) {
+        if (defendBuffer > 0) {
+          defendPlateColor.g = 255;
+        } else {
+          Lifes--;
+          defendPlateColor.r = 255;
+          impulses[i]->playHitSound();
+        }
+      }
+  
+      // If the impulse is at the end of the strip, "disable" it,
+      // by setting the position back to the invalid value of -1
+      if (pos == stripEnd - 1) {
+        impulses[i]->position = -1;
+      }
+      else {
+        // If the impulse is still valid we proceed to the next position
+        impulses[i]->position++;
+      }
     }
   }
 
-  for (int i = stripEnd; i < strip->numPixels(); i++) {;
-    strip->setPixelColor(i, defendPlateColor.r, defendPlateColor.g, defendPlateColor.b);
+  if (swapped) {
+    for (int i = 0; i < stripStart; i++) {;
+      strip->setPixelColor(i, defendPlateColor.r, defendPlateColor.g, defendPlateColor.b);
+    }
+  } else {
+    for (int i = stripEnd; i < strip->numPixels(); i++) {;
+      strip->setPixelColor(i, defendPlateColor.r, defendPlateColor.g, defendPlateColor.b);
+    }
   }
 
   // Show all pixels
@@ -319,13 +368,22 @@ void setupLifeDisplay() {
 void updateLifeDisplay() {
   float stripPixels = lifeStrip->numPixels();
   float usableLifes = max(Lifes, 0);
-  float lifePercentage = stripPixels - ((usableLifes / MAX_LIFES) * stripPixels);
+  float lifePercentage = (usableLifes / MAX_LIFES) * stripPixels;
+  float lifeThreshold = stripPixels - lifePercentage;
   
   for (float i = 0; i < stripPixels; i++) {
-    if (i >= lifePercentage) {
-      lifeStrip->setPixelColor(i, 0, 255, 0);
+    if (swapped) {
+      if (i <= lifeThreshold) {
+        lifeStrip->setPixelColor(i, 0, 255, 0);
+      } else {
+        lifeStrip->setPixelColor(i, 0, 0, 0);
+      }
     } else {
-      lifeStrip->setPixelColor(i, 0, 0, 0);
+      if (i >= lifeThreshold) {
+        lifeStrip->setPixelColor(i, 0, 255, 0);
+      } else {
+        lifeStrip->setPixelColor(i, 0, 0, 0);
+      }
     }
   }
   lifeStrip->show();
@@ -342,7 +400,11 @@ void setupNewGame() {
     Lanes_Array[i]->resetImpulses();
   }
 
-  idle = true;
+  swapped = !swapped;
+
+  if (!swapped) {
+    idle = true;
+  }
 }
 
 void blinkAllLanes(int r, int g, int b, int ms) {
@@ -356,15 +418,61 @@ void blinkAllLanes(int r, int g, int b, int ms) {
   delay(ms / 2);
 }
 
+void blinkWinner(bool playerTwo, int ms) {
+  RGB firstColor;
+  firstColor.r = playerTwo ? 255 : 0;
+  firstColor.g = playerTwo ? 0 : 255;
+  firstColor.b = 0;
+
+  RGB secondColor;
+  secondColor.r = playerTwo ? 0 : 255;
+  secondColor.g = playerTwo ? 255 : 0;
+  secondColor.b = 0;
+
+  for (int i=0; i<NUM_LANES / 2; i++) {
+    int stripPixels = Lanes_Array[i]->strip->numPixels();
+    for (int j = 0; j < stripPixels / 2; j++) {
+      Lanes_Array[i]->strip->setPixelColor(j, firstColor.r, firstColor.g, firstColor.b);
+    }
+    for (int j = stripPixels / 2; j < stripPixels; j++) {
+      Lanes_Array[i]->strip->setPixelColor(j, secondColor.r, secondColor.g, secondColor.b);
+    }
+  }
+  delay(ms / 2);
+  for (int i=0; i<NUM_LANES; i++) {
+    Lanes_Array[i]->setLaneColor(0, 0, 0);
+  }
+  delay(ms / 2);
+}
+
 void endGame() {
+  unsigned long runTime = millis();
   Serial.println(GAME_OVER_MUSIC);
 
-  blinkAllLanes(255, 0, 0, 1000);
-  blinkAllLanes(255, 0, 0, 1000);
-  blinkAllLanes(255, 0, 0, 1000);
-  blinkAllLanes(255, 0, 0, 1000);
-  blinkAllLanes(255, 0, 0, 1000);
-  blinkAllLanes(0, 255, 0, 1000);
+  if (swapped) {
+    // Game has ended, check which player has won
+    if (runTime < lastRunTime) {
+      // Player 2 has won
+      blinkWinner(true, 1000);
+      blinkWinner(true, 1000);
+      blinkWinner(true, 1000);
+      blinkWinner(true, 1000);
+    } else {
+      // Player 1 has won
+      blinkWinner(false, 1000);
+      blinkWinner(false, 1000);
+      blinkWinner(false, 1000);
+      blinkWinner(false, 1000);
+    }
+  } else {
+    blinkAllLanes(255, 0, 0, 1000);
+    blinkAllLanes(255, 0, 0, 1000);
+    blinkAllLanes(255, 0, 0, 1000);
+    blinkAllLanes(255, 0, 0, 1000);
+    blinkAllLanes(255, 0, 0, 1000);
+    blinkAllLanes(0, 255, 0, 1000);
+  }
+  lastRunTime = runTime;
 }
 
 bool interrupted() {
@@ -489,7 +597,7 @@ void loop() {
     setupNewGame();
   }
    
-  int ms= millis();
+  int ms = millis();
   
   for (int i=0; i<NUM_LANES; i++) {
     Lanes_Array[i]->loop(i);
