@@ -33,7 +33,7 @@ const int STRIP_START_LANE_5 = 25;
 const int STRIP_END_LANE_5 = 125;
 
 // Life Lane
-const int LED_STRIP_PIN_LIFE = 1;
+const int LED_STRIP_PIN_LIFE = 40;
 
 // Number of LEDs of a single strip
 const int PIXELS_LANE_1 = 150;
@@ -46,6 +46,7 @@ const int PIXELS_LANE_LIFE = 150;
 const byte IMPULS_MIN_SIZE = 4; // Minimum length of an impulse
 const int MAX_LIFES = 100;
 int Lifes = MAX_LIFES;
+const int DEFEND_BUFFER_SIZE = 15;
 
 struct RGB {
   byte r;
@@ -56,24 +57,38 @@ struct RGB {
 // Music and Sounds
 
 const char BACKGROUND_MUSIC[] = "$M0";
+const char GAME_OVER_MUSIC[] = "$M1";
+
 const char PLAYER_HIT_SOUND[] = "$S0";
 
 // Colors structs
 RGB red;
+RGB blue;
 
 class Impuls {
   public:
     int position; // StartPosition of the impulse
     byte length; // Length of the impulse
+    bool hitSoundPlayed;
     RGB color;
     Impuls(int pos, byte len, RGB col);
+    void playHitSound();
 };
 
 Impuls::Impuls(int pos, byte len, RGB col) {
   position = pos;
   length = len;
   color = col;
+
+  hitSoundPlayed = false;
 };
+
+void Impuls::playHitSound() {
+  if (!hitSoundPlayed) {
+    hitSoundPlayed = true;
+    Serial.println(PLAYER_HIT_SOUND);
+  }
+}
 
 class Lane {
   public:
@@ -86,11 +101,13 @@ class Lane {
     Lane(int num_pixels, int led_pin, int button1, int button2, int stripStart, int stripEnd);
     void createNewImpuls();
     void loop();
+    void setLaneColor(int r, int g, int b);
     
   private:
     int button1;
     int button2;
     int size_impulses_array;
+    int defendBuffer;
 };
 
 //Lane Constructor
@@ -115,6 +132,7 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
   button2=but2;
   stripStart = sStart;
   stripEnd = sEnd;
+  defendBuffer = 0;
 };
 
 //New Impuls Function declaration
@@ -124,8 +142,16 @@ void Lane::createNewImpuls() {
   // Re-initializè the impulse at the current position
   impulses[current_index]->position = stripStart;
   impulses[current_index]->length = IMPULS_MIN_SIZE;
-  impulses[current_index]->color = red;
+  impulses[current_index]->color = blue;
+  impulses[current_index]->hitSoundPlayed = false;
 };
+
+void Lane::setLaneColor(int r, int g, int b) {
+  for (int i = 0; i < strip->numPixels(); i++) {
+    strip->setPixelColor(i, r, g, b);
+  }
+  strip->show();
+}
 
 void Lane::loop(){
   // Check whether the first player is pressing her button
@@ -159,8 +185,8 @@ void Lane::loop(){
 
   // Colorize plates
   RGB shootPlateColor;
-  shootPlateColor.r = shootButtonPressed ? 255 : 0;
-  shootPlateColor.g = 0;
+  shootPlateColor.r = 0;
+  shootPlateColor.g = shootButtonPressed ? 255 : 0;
   shootPlateColor.b = 0;
   for (int i = 0; i < stripStart; i++) {
     strip->setPixelColor(i, shootPlateColor.r, shootPlateColor.g, shootPlateColor.b);
@@ -173,7 +199,9 @@ void Lane::loop(){
   defendPlateColor.g = 0;
   defendPlateColor.b = 0;
 
-  bool defendButtonPressed = digitalRead(button2) == HIGH;
+  if (digitalRead(button2) == HIGH) {
+    defendBuffer = DEFEND_BUFFER_SIZE;  
+  }
   
   for (int i = 0; i < size_impulses_array; i++) {
     // Check whether the impulse is valid and initialized, otherwise skip this impulse
@@ -191,12 +219,12 @@ void Lane::loop(){
     // and the second player is not pressing her button reduce the lifes of this player.
 
     if (pos + impulses[i]->length - 2 >= stripEnd - 1) {
-      if (defendButtonPressed) {
+      if (defendBuffer > 0) {
         defendPlateColor.g = 255;
       } else {
         Lifes--;
         defendPlateColor.r = 255;
-        Serial.println(PLAYER_HIT_SOUND);
+        impulses[i]->playHitSound();
       }
     }
 
@@ -217,6 +245,8 @@ void Lane::loop(){
 
   // Show all pixels
   strip->show();
+  
+  defendBuffer--;
 };
 
 const int NUM_LANES = 5;
@@ -231,30 +261,58 @@ void setupLifeDisplay() {
 }
 
 void updateLifeDisplay() {
-  int stripPixels = lifeStrip->numPixels();
-  int usableLifes = max(Lifes, 0);
-  int pixelThreshold = (usableLifes / MAX_LIFES) * stripPixels;
+  float stripPixels = lifeStrip->numPixels();
+  float usableLifes = max(Lifes, 0);
+  float lifePercentage = stripPixels - ((usableLifes / MAX_LIFES) * stripPixels);
   
-  for (int i = 0; i < stripPixels; i++) {
-    if (i >= pixelThreshold) {
-      lifeStrip->setPixelColor(i, 0, 0, 0);
-    } else {
+  for (float i = 0; i < stripPixels; i++) {
+    if (i >= lifePercentage) {
       lifeStrip->setPixelColor(i, 0, 255, 0);
+    } else {
+      lifeStrip->setPixelColor(i, 0, 0, 0);
     }
   }
   lifeStrip->show();
 }
 
-void setup() { // Running once after Arduino boots
-  Serial.begin(9600);
-
+void setupNewGame() {
   // Start music
   Serial.println(BACKGROUND_MUSIC);
+  Lifes = MAX_LIFES;
+}
+
+void blinkAllLanes(int r, int g, int b, int ms) {
+  for (int i=0; i<NUM_LANES; i++) {
+    Lanes_Array[i]->setLaneColor(r, g, b);
+  }
+  delay(ms / 2);
+  for (int i=0; i<NUM_LANES; i++) {
+    Lanes_Array[i]->setLaneColor(0, 0, 0);
+  }
+  delay(ms / 2);
+}
+
+void endGame() {
+  Serial.println(GAME_OVER_MUSIC);
+
+  blinkAllLanes(255, 0, 0, 1000);
+  blinkAllLanes(255, 0, 0, 1000);
+  blinkAllLanes(255, 0, 0, 1000);
+  blinkAllLanes(255, 0, 0, 1000);
+  blinkAllLanes(0, 255, 0, 1000);
+}
+
+void setup() { // Running once after Arduino boots
+  Serial.begin(9600);
 
   // Initialize "red" to be red
   red.r = 255;
   red.g = 0;
   red.b = 0;
+
+  blue.r = 0;
+  blue.g = 0;
+  blue.b = 255;
 
   Lanes_Array[0]=new Lane(PIXELS_LANE_1, LED_STRIP_PIN_LANE_1, BUTTON_PIN_SHOOT_LANE_1, BUTTON_PIN_DEFEND_LANE_1, STRIP_START_LANE_1, STRIP_END_LANE_1);
   Lanes_Array[1]=new Lane(PIXELS_LANE_2, LED_STRIP_PIN_LANE_2, BUTTON_PIN_SHOOT_LANE_2, BUTTON_PIN_DEFEND_LANE_2, STRIP_START_LANE_2, STRIP_END_LANE_2);
@@ -263,12 +321,19 @@ void setup() { // Running once after Arduino boots
   Lanes_Array[4]=new Lane(PIXELS_LANE_5, LED_STRIP_PIN_LANE_5, BUTTON_PIN_SHOOT_LANE_5, BUTTON_PIN_DEFEND_LANE_5, STRIP_START_LANE_5, STRIP_END_LANE_5);
 
   setupLifeDisplay();
+
+  setupNewGame();
 }
 
 void loop() { 
   // Should run once every ~33ms to receive 30 frames per second
   // Record the current milliseconds to track how long the logic
   // takes to execute
+
+  if (Lifes < 0) {
+    endGame();
+    setupNewGame();
+  }
    
   int ms= millis();
   
