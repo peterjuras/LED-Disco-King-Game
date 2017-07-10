@@ -3,34 +3,34 @@
 
 // Lane 1
 const int LED_STRIP_PIN_LANE_1 = 22;
-const int BUTTON_PIN_SHOOT_LANE_1 = 3;
+const int BUTTON_PIN_SHOOT_LANE_1 = 6;
 const int BUTTON_PIN_DEFEND_LANE_1 = 7;
 const int STRIP_START_LANE_1 = 32;
-const int STRIP_END_LANE_1 = 125;
+const int STRIP_END_LANE_1 = 123;
 // Lane 2
 const int LED_STRIP_PIN_LANE_2 = 26;
 const int BUTTON_PIN_SHOOT_LANE_2 = 5;
 const int BUTTON_PIN_DEFEND_LANE_2 = 8;
 const int STRIP_START_LANE_2 = 32;
-const int STRIP_END_LANE_2 = 125;
+const int STRIP_END_LANE_2 = 123;
 // Lane 3
 const int LED_STRIP_PIN_LANE_3 = 27;
 const int BUTTON_PIN_SHOOT_LANE_3 = 4;
 const int BUTTON_PIN_DEFEND_LANE_3 = 9;
 const int STRIP_START_LANE_3 = 31;
-const int STRIP_END_LANE_3 = 125;
+const int STRIP_END_LANE_3 = 123;
 // Lane 4
 const int LED_STRIP_PIN_LANE_4 = 23;
-const int BUTTON_PIN_SHOOT_LANE_4 = 6;
+const int BUTTON_PIN_SHOOT_LANE_4 = 3;
 const int BUTTON_PIN_DEFEND_LANE_4 = 10;
 const int STRIP_START_LANE_4 = 32;
-const int STRIP_END_LANE_4 = 125;
+const int STRIP_END_LANE_4 = 123;
 // Lane 5
 const int LED_STRIP_PIN_LANE_5 = 30;
 const int BUTTON_PIN_SHOOT_LANE_5 = 2;
 const int BUTTON_PIN_DEFEND_LANE_5 = 11;
 const int STRIP_START_LANE_5 = 23;
-const int STRIP_END_LANE_5 = 125;
+const int STRIP_END_LANE_5 = 112;
 
 // Life Lane
 const int LED_STRIP_PIN_LIFE = 40;
@@ -144,7 +144,7 @@ Lane::Lane(int num_pixels, int led_pin, int but1, int but2, int sStart, int sEnd
   strip= new Adafruit_NeoPixel(num_pixels, led_pin, NEO_GRB);
   strip->begin();
   strip->show(); // Initialize all LEDs to be off
-  strip->setBrightness(150);
+  strip->setBrightness(200);
   // Array of impulses
   // size_impulses is the number of concurrent impulses per strip. The idea behind the calculation is to
   // have a number where we would have no overlapping impulses in position and length that can fit across
@@ -231,7 +231,8 @@ void Lane::loop(int index){
     // TODO: Impulses can currently overlap,
     // we should see whether this can become a problem at some point
     if (current_index == -1 ||
-      impulses[current_index]->position > (swapped ? stripEnd - 1 : stripStart + 1)
+      (swapped && impulses[current_index]->position < stripEnd - 1) ||
+      (!swapped && impulses[current_index]->position > stripStart + 1)
     ) {
       createNewImpuls();
     }
@@ -331,6 +332,7 @@ void Lane::loop(int index){
           defendPlateColor.r = 255;
           impulses[i]->playHitSound();
         }
+        defendPlateColor.b = 0;
       }
   
       // If the impulse is at the end of the strip, "disable" it,
@@ -369,7 +371,7 @@ Adafruit_NeoPixel* lifeStrip = new Adafruit_NeoPixel(PIXELS_LANE_LIFE, LED_STRIP
 void setupLifeDisplay() {
   lifeStrip->begin();
   lifeStrip->show();
-  lifeStrip->setBrightness(150);
+  lifeStrip->setBrightness(200);
 }
 
 void updateLifeDisplay() {
