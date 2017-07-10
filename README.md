@@ -2,7 +2,7 @@
 
 ## How everything looks together:
 
-![Awesome!](http://i.imgur.com/oKDG6p6.gif)
+[Awesome!](http://i.imgur.com/oKDG6p6.gif)
 
 The Stepper plates provide the main input method for the user and have six integral parts that allow them to work properly.
 
@@ -26,6 +26,8 @@ The playing field is made of five LED (150 LED’s on 5 meters) strips for the p
 
 ### How everything is connected:
 All the visual parts of the game are handled by an Arduino Mega. 
+
+![sketch](http://i.imgur.com/1FnmXYh.png)
 
 ### *Pew* *Pew*! Enabling sounds with a Raspberry PI
 The Arduino prints sound and music codes as Serial messages. To receive them, a Python server needs to be set up on a computer that is connected to the Arduino.
