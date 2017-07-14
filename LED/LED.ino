@@ -69,7 +69,7 @@ struct RGB {
 
 const char GAME_OVER_MUSIC[] = "$M-1";
 const char BACKGROUND_MUSIC[] = "$M";
-const int NUMBER_OF_MUSIC_TRACKS = 5;
+const int NUMBER_OF_MUSIC_TRACKS = 6;
 int currentMusicTrack = 0;
 
 
