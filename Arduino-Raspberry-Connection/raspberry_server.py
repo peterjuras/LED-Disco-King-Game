@@ -1,8 +1,12 @@
 import time
 import serial
 import pygame.mixer
+import alsaaudio
 
 SERIAL = serial.Serial('/dev/ttyACM0', 9600)
+
+MIXER = alsaaudio.Mixer('PCM')
+MIXER.setvolume(100)
 
 NUM_CHANNELS = 32
 pygame.mixer.pre_init(44100, -16, 1, 512)
@@ -16,7 +20,8 @@ MUSIC = {
     '$M1': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Hot-Stuff.mp3',
     '$M2': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Abba-Gimme.mp3',
     '$M3': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/YMCA.mp3',
-    '$M4': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Aerobic.mp3'
+    '$M4': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Aerobic.mp3',
+    '$M5': '/home/pi/src/LED-Disco-King-Game/Arduino-Raspberry-Connection/Sounds/Music/Boogie-Wonderland.mp3'
 }
 
 SOUNDS = {
